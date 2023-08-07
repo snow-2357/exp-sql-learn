@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const connection = require("../mysql");
 
+// get all  user
 router.get("/allusers", (req, res) => {
   const selectQuery = "SELECT * FROM users";
   connection.query(selectQuery, (err, rows) => {
@@ -13,6 +14,7 @@ router.get("/allusers", (req, res) => {
   });
 });
 
+// add new user
 router.post("/adduser", (req, res) => {
   const { name, email } = req.body;
 
@@ -28,6 +30,7 @@ router.post("/adduser", (req, res) => {
   });
 });
 
+// get all posts by a user
 router.get("/allpost/:id", (req, res) => {
   const userId = req.params.id;
   const selectQuery = `
@@ -45,5 +48,28 @@ router.get("/allpost/:id", (req, res) => {
     res.json(rows);
   });
 });
+
+// add new posts
+router.post("/addpost/:id", (req, res) => {
+  const { title, content } = req.body;
+  const author_id = req.params.id;
+
+  const insertQuery =
+    "INSERT INTO posts (title, content, author_id) VALUES (?, ?, ?)";
+  connection.query(
+    insertQuery,
+    [title, content, author_id],
+    (error, results) => {
+      if (error) {
+        console.error("Error adding post:", error);
+        res.status(500).json({ error: "Error adding post" });
+      } else {
+        console.log("Post added successfully");
+        res.json({ message: "Post added successfully" });
+      }
+    }
+  );
+});
+
 //
 module.exports = router;
