@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Send Private Messages</title>
+</head>
+<body>
+  <h1>Send Private Messages</h1>
+  <div>
+    <label for="receiverId">Receiver's User ID:</label>
+    <input type="text" id="receiverId" placeholder="Enter receiver's user ID...">
+  </div>
+  <div>
+    <label for="message">Message:</label>
+    <input type="text" id="message" placeholder="Type a message...">
+  </div>
+  <button id="sendButton">Send</button>
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const receiverIdInput = document.getElementById('receiverId');
+    const messageInput = document.getElementById('message');
+    const sendButton = document.getElementById('sendButton');
+    const socket = io();
+
+    // Prompt the user to enter their user ID
+    const userId = prompt('Enter your user ID:');
+    if (!userId) {
+      alert('User ID is required.');
+      window.location.href = '/'; // Redirect to main page if no user ID provided
+    }
+
+    sendButton.addEventListener('click', () => {
+      const receiverId = receiverIdInput.value;
+      const message = messageInput.value;
+      
+      if (!receiverId || !message) {
+        alert('Receiver ID and message are required.');
+        return;
+      }
+      
+      socket.emit('message', { userId, receiverId, message });
+      messageInput.value = '';
+    });
+  </script>
+</body>
+</html>

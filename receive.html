@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Receive Private Messages</title>
+</head>
+<body>
+  <h1>Receive Private Messages</h1>
+  <div id="messageList"></div>
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const messageList = document.getElementById('messageList');
+    const socket = io();
+
+    // Prompt the user to enter their user ID
+    const userId = prompt('Enter your user ID:');
+    if (!userId) {
+      alert('User ID is required.');
+      window.location.href = '/'; // Redirect to main page if no user ID provided
+    }
+
+    socket.emit('joinRoom', userId);
+
+    socket.on('privateMessage', (data) => {
+      const messageElement = document.createElement('div');
+      messageElement.textContent = `${data.senderId}: ${data.message}`;
+      messageList.appendChild(messageElement);
+    });
+  </script>
+</body>
+</html>
