@@ -1,6 +1,7 @@
 const http = require("http");
 const express = require("express");
 const userRouter = require("./routes/user");
+const authRouter = require("./routes/auth");
 const messagesRouter = require("./routes/message");
 require("dotenv").config();
 const { initSocket } = require("./socket");
@@ -14,6 +15,8 @@ app.use(express.json());
 app.use("/api/user", userRouter);
 
 app.use("/api/messages", messagesRouter);
+
+app.use("/api/auth", authRouter);
 
 const PORT = process.env.PORT || 3000;
 

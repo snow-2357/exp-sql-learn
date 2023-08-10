@@ -9,7 +9,7 @@ const otpStore = {};
 router.post("/send-otp", (req, res) => {
   const { phoneNumber } = req.body;
 
-  const query = "SELECT * FROM users WHERE phone = ?";
+  const query = "SELECT id, name FROM users WHERE phone = ?";
   connection.query(query, [phoneNumber], (err, results) => {
     if (err) {
       console.error("Error querying database:", err);
@@ -20,10 +20,16 @@ router.post("/send-otp", (req, res) => {
       return res.status(404).json({ error: "Phone number not registered" });
     }
 
+    const user = results[0];
+    const userId = user.id;
+    const userName = user.name;
+
     // Generate a random 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000);
     otpStore[phoneNumber] = otp;
     console.log("Otp will be send to phone", otp);
+
+    res.json({ message: "OTP sent successfully", token, userId, userName });
   });
 });
 
