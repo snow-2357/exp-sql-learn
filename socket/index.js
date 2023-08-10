@@ -1,25 +1,9 @@
 const socketIO = require("socket.io");
+const connection = require("../mysql");
 
 const initSocket = (server) => {
-  const io = socketIO(server); // Move this line after defining the server variable
+  const io = socketIO(server);
 
-  // io.on("connection", (socket) => {
-  //   console.log("A user connected");
-  //   const userId = socket.handshake.query.userId;
-
-  //   socket.on("message", (data) => {
-  //     // io.emit("message", data); // Broadcast the message to all connected clients
-
-  //     io.to(data.receiverId).emit("message", {
-  //       senderId: userId,
-  //       message: data.message,
-  //     }); // Emit the message to the intended receiver
-  //   });
-
-  //   socket.on("disconnect", () => {
-  //     console.log("A user disconnected");
-  //   });
-  // });
   io.on("connection", (socket) => {
     console.log("A user connected");
 
@@ -31,6 +15,24 @@ const initSocket = (server) => {
     socket.on("message", (data) => {
       console.log(data);
       const { userId, receiverId, message } = data;
+
+      // sqlquery
+      const insertMessageQuery = `
+        INSERT INTO messages (sender_id, receiver_id, message_text, timestamp)
+        VALUES (?, ?, ?, NOW())
+      `;
+      connection.query(
+        insertMessageQuery,
+        [userId, receiverId, message],
+        (error, result) => {
+          if (error) {
+            console.error("Error inserting message into database:", error);
+          } else {
+            console.log("Message inserted into database");
+          }
+        }
+      );
+
       io.to(receiverId).emit("privateMessage", { senderId: userId, message });
     });
 
