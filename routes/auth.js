@@ -49,7 +49,7 @@ router.post("/verify-otp", (req, res) => {
   }
 });
 
-// add user
+// new user register
 router.post("/register", async (req, res) => {
   const { name, email, password, phoneNumber } = req.body;
 
@@ -83,5 +83,40 @@ router.post("/register", async (req, res) => {
   );
 });
 
+// login
+router.post("/login", async (req, res) => {
+  const { name, password } = req.body;
+
+  const checkQuery = "SELECT id, password, username FROM users WHERE name = ?";
+
+  connection.query(checkQuery, [name], (error, results) => {
+    if (error) {
+      // console.error("Error inserting user:", error);
+      res.status(500).json({ error: "Error inserting user" });
+    } else {
+      const user = results[0];
+      const hashedPassword = user.password;
+      bcrypt.compare(password, hashedPassword, (compareError, isMatch) => {
+        if (compareError) {
+          console.error("Error comparing passwords:", compareError);
+          res.status(500).json({ error: "Error comparing passwords" });
+        } else if (isMatch) {
+          const accessToken = jwt.sign(
+            {
+              id: user.id,
+              userName: user.name,
+            },
+            process.env.PASSTOKEN,
+            { expiresIn: "5h" }
+          );
+          res.status(200).json({ accessToken });
+        } else {
+          // Password doesn't match
+          res.status(401).json({ error: "Invalid credentials" });
+        }
+      });
+    }
+  });
+});
 //
 module.exports = router;
