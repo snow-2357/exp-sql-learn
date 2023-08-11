@@ -49,5 +49,39 @@ router.post("/verify-otp", (req, res) => {
   }
 });
 
+// add user
+router.post("/register", async (req, res) => {
+  const { name, email, password, phoneNumber } = req.body;
+
+  const passwordHash = bcrypt.hashSync(password, 10);
+
+  const insertQuery =
+    "INSERT INTO users (name, email,phone_no,password) VALUES (?, ?,?,?)";
+
+  connection.query(
+    insertQuery,
+    [name, email, phoneNumber, passwordHash],
+    (error, results) => {
+      if (error) {
+        console.error("Error inserting user:", error);
+        res.status(500).json({ error: "Error inserting user" });
+      } else {
+        // console.log("User inserted successfully");
+        // res.json({ message: "User inserted successfully" });
+        const { password, ...rest } = results;
+        const acessToken = JWT.sign(
+          {
+            id: response.id,
+            role: response.roles,
+          },
+          process.env.PASSTOKEN,
+          { expiresIn: "5h" }
+        );
+        res.status(201).json({ ...rest, acessToken });
+      }
+    }
+  );
+});
+
 //
 module.exports = router;
