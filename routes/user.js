@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const connection = require("../mysql");
-const { verifyUser, verifyIndividualUser } = require("./authMiddleware");
+const { verifyUser, verifyIndividualUser } = require("../utils/authMiddleware");
 
 // get all  user
 router.get("/allusers", (req, res) => {
