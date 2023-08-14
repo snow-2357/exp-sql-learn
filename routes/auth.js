@@ -1,8 +1,7 @@
 const router = require("express").Router();
 const connection = require("../mysql");
-const jwt = require("jsonwebtoken");
-
-const jwtSecret = "password";
+const JWT = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 
 const otpStore = {};
 
@@ -40,7 +39,7 @@ router.post("/verify-otp", (req, res) => {
 
   if (storedOtp && enteredOtp === storedOtp.toString()) {
     delete otpStore[phoneNumber];
-    const newToken = jwt.sign({ phoneNumber, name }, jwtSecret, {
+    const newToken = jwt.sign({ phoneNumber, name }, process.env.PASSTOKEN, {
       expiresIn: "1h",
     });
     res.json({ message: "OTP verified successfully", token: newToken });
@@ -56,7 +55,7 @@ router.post("/register", async (req, res) => {
   const passwordHash = bcrypt.hashSync(password, 10);
 
   const insertQuery =
-    "INSERT INTO users (name, email,phone_no,password) VALUES (?, ?,?,?)";
+    "INSERT INTO users (username, email,phone_no,password) VALUES (?, ?,?,?)";
 
   connection.query(
     insertQuery,
@@ -66,18 +65,14 @@ router.post("/register", async (req, res) => {
         console.error("Error inserting user:", error);
         res.status(500).json({ error: "Error inserting user" });
       } else {
-        // console.log("User inserted successfully");
-        // res.json({ message: "User inserted successfully" });
-        const { password, ...rest } = results;
         const acessToken = JWT.sign(
           {
-            id: response.id,
-            role: response.roles,
+            id: results.insertId,
           },
           process.env.PASSTOKEN,
           { expiresIn: "5h" }
         );
-        res.status(201).json({ ...rest, acessToken });
+        res.status(201).json({ name, acessToken });
       }
     }
   );
