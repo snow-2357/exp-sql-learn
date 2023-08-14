@@ -68,6 +68,7 @@ router.post("/register", async (req, res) => {
         const acessToken = JWT.sign(
           {
             id: results.insertId,
+            userName: name,
           },
           process.env.PASSTOKEN,
           { expiresIn: "5h" }
