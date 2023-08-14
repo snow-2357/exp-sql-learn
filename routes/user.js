@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const connection = require("../mysql");
-const { verifyUser } = require("./authMiddleware");
+const { verifyUser, verifyIndividualUser } = require("./authMiddleware");
 
 // get all  user
 router.get("/allusers", (req, res) => {
@@ -32,7 +32,7 @@ router.get("/allusers", (req, res) => {
 // });
 
 // get all posts by a user
-router.get("/allpost/:id", verifyUser, (req, res) => {
+router.get("/allpost/:id", (req, res) => {
   const userId = req.params.id;
   const selectQuery = `
       SELECT users.username as author,posts.*
@@ -50,10 +50,30 @@ router.get("/allpost/:id", verifyUser, (req, res) => {
   });
 });
 
+// self posted posts
+router.get("/allpost", verifyUser, (req, res) => {
+  const userId = req.userId;
+  const selectQuery = `
+      SELECT users.username as author,posts.*
+      FROM posts
+      JOIN users ON posts.author_id = users.id
+      WHERE users.id = ?
+    `;
+  connection.query(selectQuery, [userId], (err, rows) => {
+    if (err) {
+      console.error("Error fetching posts:", err);
+      res.status(500).json({ error: "Internal server error" });
+      return;
+    }
+    res.json(rows);
+  });
+});
+
 // add new posts
-router.post("/addpost/:id", verifyUser, (req, res) => {
+router.post("/addpost", verifyUser, (req, res) => {
   const { title, content } = req.body;
-  const author_id = req.params.id;
+  const author_id = req.userId;
+  // const author_id = req.params.id;
 
   const insertQuery =
     "INSERT INTO posts (title, content, author_id) VALUES (?, ?, ?)";
