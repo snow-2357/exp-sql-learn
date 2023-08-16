@@ -2,91 +2,74 @@ const router = require("express").Router();
 const connection = require("../mysql");
 const JWT = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const { clientTwilio } = require("../utils/twilio");
 
 const otpStore = {};
 
-router.post("/send-otp", (req, res) => {
-  const { phoneNumber } = req.body;
-
-  const query = "SELECT id, name FROM users WHERE phone = ?";
-  connection.query(query, [phoneNumber], (err, results) => {
-    if (err) {
-      console.error("Error querying database:", err);
-      return res.status(500).json({ error: "Database error" });
-    }
-
-    if (results.length === 0) {
-      return res.status(404).json({ error: "Phone number not registered" });
-    }
-
-    const user = results[0];
-    const userId = user.id;
-    const userName = user.name;
-
-    // Generate a random 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000);
-    otpStore[phoneNumber] = otp;
-    console.log("Otp will be send to phone", otp);
-
-    res.json({ message: "OTP sent successfully", token, userId, userName });
-  });
-});
-
-router.post("/verify-otp", (req, res) => {
-  const { phoneNumber, enteredOtp } = req.body;
-
-  const storedOtp = otpStore[phoneNumber];
-
-  if (storedOtp && enteredOtp === storedOtp.toString()) {
-    delete otpStore[phoneNumber];
-    const newToken = jwt.sign({ phoneNumber, name }, process.env.PASSTOKEN, {
-      expiresIn: "1h",
-    });
-    res.json({ message: "OTP verified successfully", token: newToken });
-  } else {
-    res.status(401).json({ error: "Invalid OTP" });
-  }
-});
-
-// new user register
+// new user otp
 router.post("/register", async (req, res) => {
-  const { name, email, password, phoneNumber } = req.body;
+  const { userName, email, password, phoneNumber } = req.body;
 
+  const otp = Math.floor(100000 + Math.random() * 900000);
+  otpStore[userName] = otp;
+  const otpMessage = `Your OTP is: ${otp}. Please enter this code to verify your account.`;
+
+  clientTwilio.messages
+    .create({
+      from: process.env.TWILIO_PHONO,
+      to: phoneNumber,
+      body: otpMessage,
+    })
+    .then((message) => console.log("opt send"));
+  res.status(201).json({ userName, email, password, phoneNumber });
+});
+
+// verifying otp will create a new user
+router.post("/verifyotp", (req, res) => {
+  const { userName, email, password, phoneNumber, enteredOtp } = req.body;
+
+  const storedOtp = otpStore[userName];
   const passwordHash = bcrypt.hashSync(password, 10);
 
   const insertQuery =
     "INSERT INTO users (username, email,phone_no,password) VALUES (?,?,?,?)";
 
-  connection.query(
-    insertQuery,
-    [name, email, phoneNumber, passwordHash],
-    (error, results) => {
-      if (error) {
-        console.error("Error inserting user:", error);
-        res.status(500).json({ error: "Error inserting user" });
-      } else {
-        const acessToken = JWT.sign(
-          {
-            id: results.insertId,
-            userName: name,
-          },
-          process.env.PASSTOKEN,
-          { expiresIn: "5h" }
-        );
-        res.status(201).json({ name, acessToken });
+  if (storedOtp && enteredOtp === storedOtp.toString()) {
+    delete otpStore[userName];
+
+    connection.query(
+      insertQuery,
+      [userName, email, phoneNumber, passwordHash],
+      (error, results) => {
+        if (error) {
+          res.status(500).json({ error: "Error user data" });
+        } else {
+          const user = results;
+          const accessToken = JWT.sign(
+            {
+              id: user.insertId,
+              userName,
+            },
+            process.env.PASSTOKEN,
+            { expiresIn: "5h" }
+          );
+          res.status(200).json({ userName, accessToken });
+        }
       }
-    }
-  );
+    );
+  } else {
+    res.status(401).json({ error: "Invalid OTP" });
+  }
 });
 
 // login
 router.post("/login", async (req, res) => {
-  const { name, password } = req.body;
+  const { userName, password } = req.body;
 
   const checkQuery =
     "SELECT id, password, username FROM users WHERE username = ?";
 
-  connection.query(checkQuery, [name], (error, results) => {
+  connection.query(checkQuery, [userName], (error, results) => {
     if (error) {
       res.status(500).json({ error: "Error user data" });
     } else {
@@ -100,15 +83,14 @@ router.post("/login", async (req, res) => {
           const accessToken = JWT.sign(
             {
               id: user.id,
-              userName: user.name,
+              userName: user.username,
             },
             process.env.PASSTOKEN,
             { expiresIn: "5h" }
           );
-          res.status(200).json({ name: user.username, accessToken });
+          res.status(200).json({ userName: user.username, accessToken });
         } else {
-          // Password doesn't match
-          res.status(401).json({ error: "Invalid credentials" });
+          res.status(401).json({ error: "Wrong User name or Password" });
         }
       });
     }
