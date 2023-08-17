@@ -3,6 +3,7 @@ const connection = require("../mysql");
 const JWT = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const { clientTwilio } = require("../utils/twilio");
+const { jwtSign } = require("../utils/JwtSign");
 
 // new user otp
 router.post("/register", async (req, res) => {
@@ -87,17 +88,10 @@ router.post("/verifyotp", async (req, res) => {
           }
         });
       });
+      const accessToken = jwtSign(userInsertResults.insertId, userName, "5h");
+      const refToken = jwtSign(userInsertResults.insertId, userName, "5h");
 
-      const accessToken = JWT.sign(
-        {
-          id: userInsertResults.insertId,
-          userName,
-        },
-        process.env.PASSTOKEN,
-        { expiresIn: "5h" }
-      );
-
-      res.status(200).json({ userName, accessToken });
+      res.status(200).json({ userName, accessToken, refToken });
     } else {
       res.status(401).json({ error: "Invalid OTP" });
     }
@@ -124,21 +118,45 @@ router.post("/login", async (req, res) => {
           console.error("Error comparing passwords:", compareError);
           res.status(500).json({ error: "Error comparing passwords" });
         } else if (isMatch) {
-          const accessToken = JWT.sign(
-            {
-              id: user.id,
-              userName: user.username,
-            },
-            process.env.PASSTOKEN,
-            { expiresIn: "5h" }
-          );
-          res.status(200).json({ userName: user.username, accessToken });
+          const accessToken = jwtSign(user.id, user.username, "5h");
+          const refToken = jwtSign(user.id, user.username, "5h");
+          res
+            .status(200)
+            .json({ userName: user.username, accessToken, refToken });
         } else {
           res.status(401).json({ error: "Wrong User name or Password" });
         }
       });
     }
   });
+});
+
+//create new accesstoken
+router.post("/ref_token", async (req, res) => {
+  const Header = req.headers.reftoken;
+  const checkQuery = "SELECT id, username FROM users WHERE username = ?";
+
+  try {
+    const refHeader = Header.split(" ")[1];
+    if (refHeader) {
+      JWT.verify(refHeader, process.env.PASSTOKEN, async (err, user) => {
+        if (err) res.status(404).json({ status: "Token is not valid!" });
+        else {
+          connection.query(checkQuery, [user.userName], (error, results) => {
+            if (error) {
+              res.status(500).json({ error: "Error user data" });
+            } else {
+              const user = results[0];
+              const accessToken = jwtSign(user.id, user.username, "5h");
+              res.status(200).json({ userName: user.username, accessToken });
+            }
+          });
+        }
+      });
+    }
+  } catch (err) {
+    res.status(500).json(err);
+  }
 });
 //
 module.exports = router;
