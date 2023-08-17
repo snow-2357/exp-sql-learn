@@ -6,7 +6,7 @@ const { clientTwilio } = require("../utils/twilio");
 
 // new user otp
 router.post("/register", async (req, res) => {
-  const { userName, email, password, phoneNumber } = req.body;
+  const { userName, email, phoneNumber } = req.body;
 
   const otp = Math.floor(100000 + Math.random() * 900000);
   const otpMessage = `Your OTP is: ${otp}. Please enter this code to verify your account.`;
@@ -30,7 +30,7 @@ router.post("/register", async (req, res) => {
             console.log(error);
             res.status(500).json({ error: "Error user data" });
           } else {
-            res.status(201).json({ userName, email, password, phoneNumber });
+            res.status(201).json({ userName, email, phoneNumber });
           }
         }
       );
@@ -38,47 +38,72 @@ router.post("/register", async (req, res) => {
 });
 
 // verifying otp will create a new user
-router.post("/verifyotp", (req, res) => {
-  const { userName, email, password, phoneNumber, enteredOtp } = req.body;
 
-  const passwordHash = bcrypt.hashSync(password, 10);
+router.post("/verifyotp", async (req, res) => {
+  try {
+    const { userName, email, password, phoneNumber, enteredOtp } = req.body;
+    const passwordHash = bcrypt.hashSync(password, 10);
 
-  const otpQuery =
-    "SELECT otp FROM temporary_otp WHERE userName=? AND expires_at > NOW() ORDER BY created_at desc limit 1";
+    const otpQuery =
+      "SELECT otp FROM temporary_otp WHERE userName=? AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1";
 
-  const insertQuery =
-    "INSERT INTO users (username, email,phone_no,password) VALUES (?,?,?,?)";
+    const insertQuery =
+      "INSERT INTO users (username, email, phone_no, password) VALUES (?,?,?,?)";
 
-  connection.query(otpQuery, [userName], (error, results) => {
-    if (error) {
-      res.status(500).json({ error: "Error user data" });
-    } else {
-      if (results[0].otp && enteredOtp === results[0].otp.toString()) {
+    const deleteOtpsQuery = "DELETE FROM temporary_otp WHERE userName=?";
+
+    const otpResults = await new Promise((resolve, reject) => {
+      connection.query(otpQuery, [userName], (error, results) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(results);
+        }
+      });
+    });
+
+    if (otpResults[0].otp && enteredOtp === otpResults[0].otp.toString()) {
+      const userInsertResults = await new Promise((resolve, reject) => {
         connection.query(
           insertQuery,
           [userName, email, phoneNumber, passwordHash],
           (error, results) => {
             if (error) {
-              res.status(500).json({ error: "Error user data" });
+              reject(error);
             } else {
-              const user = results;
-              const accessToken = JWT.sign(
-                {
-                  id: user.insertId,
-                  userName,
-                },
-                process.env.PASSTOKEN,
-                { expiresIn: "5h" }
-              );
-              res.status(200).json({ userName, accessToken });
+              resolve(results);
             }
           }
         );
-      } else {
-        res.status(401).json({ error: "Invalid OTP" });
-      }
+      });
+
+      // User data insertion successful
+      await new Promise((resolve, reject) => {
+        connection.query(deleteOtpsQuery, [userName], (error) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        });
+      });
+
+      const accessToken = JWT.sign(
+        {
+          id: userInsertResults.insertId,
+          userName,
+        },
+        process.env.PASSTOKEN,
+        { expiresIn: "5h" }
+      );
+
+      res.status(200).json({ userName, accessToken });
+    } else {
+      res.status(401).json({ error: "Invalid OTP" });
     }
-  });
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 // login
