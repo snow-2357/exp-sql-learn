@@ -1,5 +1,7 @@
 const router = require("express").Router();
 const connection = require("../mysql");
+const fs = require("fs");
+const path = require("path");
 const { verifyIndividualUser } = require("../utils/authMiddleware");
 
 // get all  messages
@@ -39,6 +41,47 @@ router.get(
     );
   }
 );
+
+// test
+router.post("/image", (req, res) => {
+  const imageFilePath = path.join(__dirname, "..", "Images", "image.jpg");
+  const binaryImageData = fs.readFileSync(imageFilePath);
+  const insertQuery = "INSERT INTO attachment_blobs (blob_data) VALUES (?)";
+
+  connection.query(insertQuery, [binaryImageData], (error, results) => {
+    if (error) {
+      console.error("Error inserting image data:", error);
+      res.status(500).send("Error inserting image data");
+    } else {
+      console.log("Image data inserted successfully");
+      res.status(200).send("Image data inserted successfully");
+    }
+  });
+});
+
+router.get("/image/:id", (req, res) => {
+  const attachmentId = req.params.id;
+
+  const selectQuery = "SELECT blob_data FROM attachment_blobs WHERE id = ?";
+
+  connection.query(selectQuery, [attachmentId], (error, results) => {
+    if (error) {
+      console.error("Error retrieving image data:", error);
+      res.status(500).send("Error retrieving image data");
+    } else {
+      if (results.length === 0) {
+        res.status(404).send("Image data not found");
+      } else {
+        const binaryImageData = results[0].blob_data;
+        res.writeHead(200, {
+          "Content-Type": "image/jpeg",
+          "Content-Length": binaryImageData.length,
+        });
+        res.end(binaryImageData);
+      }
+    }
+  });
+});
 
 //
 module.exports = router;
