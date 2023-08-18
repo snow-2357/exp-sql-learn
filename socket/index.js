@@ -12,18 +12,38 @@ const initSocket = (server) => {
       console.log(`User ${userId} joined the room`);
     });
 
-    socket.on("message", (data) => {
+    socket.on("message", async (data) => {
       console.log(data);
-      const { userId, receiverId, message } = data;
+      const { userId, receiverId, message, attachment } = data;
+
+      const insertAttachmentQuery = `
+      INSERT INTO attachment_blobs (blob_data) VALUES (?)
+    `;
+
+      if (attachment) {
+        const imageId = await new Promise((resolve, reject) => {
+          connection.query(
+            insertAttachmentQuery,
+            [attachment.data],
+            (error, result) => {
+              if (error) {
+                reject(error);
+              } else {
+                resolve(result);
+              }
+            }
+          );
+        });
+      }
 
       // sqlquery
       const insertMessageQuery = `
-        INSERT INTO messages (sender_id, receiver_id, message_text, timestamp)
-        VALUES (?, ?, ?, NOW())
+        INSERT INTO messages (sender_id, receiver_id, message_text, timestamp,blob_id)
+        VALUES (?, ?, ?, NOW(),?)
       `;
       connection.query(
         insertMessageQuery,
-        [userId, receiverId, message],
+        [userId, receiverId, message, imageId[0].insertId],
         (error, result) => {
           if (error) {
             console.error("Error inserting message into database:", error);
@@ -33,7 +53,11 @@ const initSocket = (server) => {
         }
       );
 
-      io.to(receiverId).emit("privateMessage", { senderId: userId, message });
+      io.to(receiverId).emit("privateMessage", {
+        senderId: userId,
+        message,
+        attachment,
+      });
     });
 
     socket.on("disconnect", () => {
