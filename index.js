@@ -3,6 +3,9 @@ const express = require("express");
 const userRouter = require("./routes/user");
 const authRouter = require("./routes/auth");
 const messagesRouter = require("./routes/message");
+const upload = require("./routes/uplaodFile");
+const fileUpload = require("express-fileupload");
+
 require("dotenv").config();
 const { initSocket } = require("./socket");
 
@@ -11,12 +14,15 @@ const server = http.createServer(app);
 initSocket(server);
 
 app.use(express.json());
+app.use(fileUpload());
 
 app.use("/api/user", userRouter);
 
 app.use("/api/messages", messagesRouter);
 
 app.use("/api/auth", authRouter);
+
+app.use("/api/upload", upload);
 
 const PORT = process.env.PORT || 3000;
 

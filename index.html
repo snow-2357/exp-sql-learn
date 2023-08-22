@@ -15,12 +15,17 @@
     <label for="message">Message:</label>
     <input type="text" id="message" placeholder="Type a message...">
   </div>
+  <div>
+    <label for="attachment">Attachment:</label>
+    <input type="file" id="attachment">
+  </div>
   <button id="sendButton">Send</button>
   
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const receiverIdInput = document.getElementById('receiverId');
     const messageInput = document.getElementById('message');
+    const attachmentInput = document.getElementById('attachment');
     const sendButton = document.getElementById('sendButton');
     const socket = io();
 
@@ -34,14 +39,50 @@
     sendButton.addEventListener('click', () => {
       const receiverId = receiverIdInput.value;
       const message = messageInput.value;
-      
+      const attachmentFile = attachmentInput.files[0];
+
       if (!receiverId || !message) {
         alert('Receiver ID and message are required.');
         return;
       }
-      
-      socket.emit('message', { userId, receiverId, message });
-      messageInput.value = '';
+
+      if (attachmentFile) {
+        const formData = new FormData();
+        formData.append('attachment', attachmentFile);
+
+        // Upload the attachment to the server
+        fetch('/api/upload/attachment', {
+          method: 'POST',
+          body: formData,
+        })
+        .then(response => response.json())
+        .then(attachmentData => {
+          socket.emit('message', {
+            userId,
+            receiverId,
+            message,
+            attachment: attachmentData,
+          });
+          messageInput.value = '';
+        })
+        .catch(error => {
+          console.error('Error uploading attachment:', error);
+          alert('Error uploading attachment. Message will be sent without attachment.');
+          socket.emit('message', {
+            userId,
+            receiverId,
+            message,
+          });
+          messageInput.value = '';
+        });
+      } else {
+        socket.emit('message', {
+          userId,
+          receiverId,
+          message,
+        });
+        messageInput.value = '';
+      }
     });
   </script>
 </body>
