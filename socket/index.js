@@ -8,16 +8,14 @@ const initSocket = (server) => {
     console.log("A user connected");
 
     socket.on("joinRoom", (userId) => {
-      socket.join(userId); // Join a room based on the user's ID
+      socket.join(userId);
       console.log(`User ${userId} joined the room`);
     });
 
     socket.on("message", async (data) => {
       const { userId, receiverId, message, attachment } = data;
-
-      // sqlquery change the name blob_id
       const insertMessageQuery = `
-        INSERT INTO messages (sender_id, receiver_id, message_text, timestamp,blob_id)
+        INSERT INTO messages (sender_id, receiver_id, message_text, timestamp,image_id)
         VALUES (?, ?, ?, NOW(),?)
       `;
       connection.query(

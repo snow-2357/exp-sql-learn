@@ -12,7 +12,7 @@ router.get(
     const senderId = req.params.senderId;
     const receiverId = req.params.receiverId;
     const page = req.params.page ? parseInt(req.params.page) : 1; // Default to page 1 if not specified
-    const itemsPerPage = 10; // Number of messages per page
+    const itemsPerPage = 10;
 
     const offset = (page - 1) * itemsPerPage;
 
