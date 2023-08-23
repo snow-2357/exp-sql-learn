@@ -20,7 +20,7 @@ const initSocket = (server) => {
       `;
       connection.query(
         insertMessageQuery,
-        [userId, receiverId, message, attachment.split(".")[0]],
+        [userId, receiverId, message, attachment],
         (error, result) => {
           if (error) {
             console.error("Error inserting message into database:", error);

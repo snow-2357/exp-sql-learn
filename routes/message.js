@@ -17,7 +17,7 @@ router.get(
     const offset = (page - 1) * itemsPerPage;
 
     const sql = `
-    SELECT *
+    SELECT message_text, timestamp, image_id
     FROM messages
     WHERE (sender_id = ? AND receiver_id = ?)
        OR (sender_id = ? AND receiver_id = ?)
@@ -35,7 +35,16 @@ router.get(
             .status(500)
             .json({ error: "An error occurred while fetching messages." });
         } else {
-          res.status(200).json(results);
+          const modifiedResults = results.map((message) => {
+            if (message.image_id) {
+              message.image_url = `${req.protocol}://${req.get(
+                "host"
+              )}/Images/${message.image_id}`;
+              delete message.image_id;
+            }
+            return message;
+          });
+          res.status(200).json(modifiedResults);
         }
       }
     );

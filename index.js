@@ -6,6 +6,7 @@ const messagesRouter = require("./routes/message");
 const upload = require("./routes/uplaodFile");
 const fileUpload = require("express-fileupload");
 const cors = require("cors");
+const path = require("path");
 
 require("dotenv").config();
 const { initSocket } = require("./socket");
@@ -36,6 +37,8 @@ app.get("/", (req, res) => {
 app.get("/receive", (req, res) => {
   res.sendFile(__dirname + "/receive.html"); // Serve the receive page
 });
+
+app.use("/images", express.static(path.join(__dirname, "Images")));
 
 server.listen(3000, () => {
   console.log(`Server is running on port 3000`);
