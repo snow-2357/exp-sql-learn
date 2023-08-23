@@ -5,6 +5,7 @@ const authRouter = require("./routes/auth");
 const messagesRouter = require("./routes/message");
 const upload = require("./routes/uplaodFile");
 const fileUpload = require("express-fileupload");
+const cors = require("cors");
 
 require("dotenv").config();
 const { initSocket } = require("./socket");
@@ -13,6 +14,7 @@ const app = express();
 const server = http.createServer(app);
 initSocket(server);
 
+app.use(cors());
 app.use(express.json());
 app.use(fileUpload());
 
