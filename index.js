@@ -15,7 +15,11 @@ const app = express();
 const server = http.createServer(app);
 initSocket(server);
 
-app.use(cors());
+const corsOptions = {
+  origin: "http://localhost:3000",
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(fileUpload());
 
@@ -40,6 +44,6 @@ app.get("/receive", (req, res) => {
 
 app.use("/images", express.static(path.join(__dirname, "Images")));
 
-server.listen(3000, () => {
-  console.log(`Server is running on port 3000`);
+server.listen(8000, () => {
+  console.log(`Server is running on port 8000`);
 });

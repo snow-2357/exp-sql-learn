@@ -112,7 +112,7 @@ router.post("/login", async (req, res) => {
       res.status(500).json({ error: "Error user data" });
     } else {
       const user = results[0];
-      const hashedPassword = user.password;
+      const hashedPassword = user?.password;
       bcrypt.compare(password, hashedPassword, (compareError, isMatch) => {
         if (compareError) {
           console.error("Error comparing passwords:", compareError);
@@ -151,6 +151,63 @@ router.post("/ref_token", async (req, res) => {
               res.status(200).json({ userName: user.username, accessToken });
             }
           });
+        }
+      });
+    }
+  } catch (err) {
+    res.status(500).json(err);
+  }
+});
+
+router.get("/check_token", async (req, res) => {
+  const authHeader = req.headers.token;
+  const Header = req.headers.reftoken;
+  const checkQuery = "SELECT id, username FROM users WHERE username = ?";
+
+  try {
+    const token = authHeader.split(" ")[1];
+    if (token) {
+      console.log(token);
+      JWT.verify(token, process.env.PASSTOKEN, async (err, user) => {
+        if (err) {
+          try {
+            const refHeader = Header.split(" ")[1];
+            if (refHeader) {
+              JWT.verify(
+                refHeader,
+                process.env.PASSTOKEN,
+                async (err, user) => {
+                  if (err)
+                    res.status(404).json({ status: "Token is not valid!" });
+                  else {
+                    connection.query(
+                      checkQuery,
+                      [user.userName],
+                      (error, results) => {
+                        if (error) {
+                          res.status(500).json({ error: "Error user data" });
+                        } else {
+                          const user = results[0];
+                          const accessToken = jwtSign(
+                            user.id,
+                            user.username,
+                            "5h"
+                          );
+                          res
+                            .status(200)
+                            .json({ userName: user.username, accessToken });
+                        }
+                      }
+                    );
+                  }
+                }
+              );
+            }
+          } catch (err) {
+            res.status(500).json(err);
+          }
+        } else {
+          res.status(201).json({ status: "Token is valid!" });
         }
       });
     }
